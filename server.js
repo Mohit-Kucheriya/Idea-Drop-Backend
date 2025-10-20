@@ -15,22 +15,23 @@ const PORT = process.env.PORT || 8000;
 // Connect to MongoDB
 connectDB();
 
-const allowedOrigins = [
-  "http://localhost:3000",
-  "https://idea-drop-frontend-o82n-p4161oepn-mohit-kucheriyas-projects.vercel.app",
-];
-
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // allow non-browser requests
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("CORS not allowed from this origin"));
-      }
+      // allow server-to-server requests like Postman
+      if (!origin) return callback(null, true);
+
+      // allow localhost
+      if (origin === "http://localhost:3000") return callback(null, true);
+
+      // allow any Vercel deployment
+      if (origin.startsWith("https://") && origin.endsWith(".vercel.app"))
+        return callback(null, true);
+
+      // block all other origins
+      callback(new Error("CORS not allowed from this origin"));
     },
-    credentials: true, // needed for cookies
+    credentials: true, // required for cookies
   })
 );
 
