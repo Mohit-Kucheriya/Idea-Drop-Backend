@@ -1,27 +1,167 @@
 import express from "express";
+import Idea from "../models/Idea.js";
+import mongoose from "mongoose";
+import { protect } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
 // @route   GET /api/ideas
 // @desc    Get all ideas
 // @access  Public
-router.get("/", (req, res) => {
-  const ideas = [
-    { id: 1, title: "Idea 1", description: "This is the first idea" },
-    { id: 2, title: "Idea 2", description: "This is the second idea" },
-    { id: 3, title: "Idea 3", description: "This is the third idea" },
-  ];
-  res.status(400);
-  throw new Error("Something went wrong");
+// @query  _limit (optional limit for number of ideas to return)
+router.get("/", async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query._limit);
 
-  res.json(ideas);
+    const query = Idea.find().sort({ createdAt: -1 });
+    if (!isNaN(limit)) {
+      query.limit(limit);
+    }
+
+    const ideas = await query.exec();
+    res.status(200).json(ideas);
+  } catch (err) {
+    console.log(err.message);
+    next(err);
+  }
+});
+
+// @route   GET /api/ideas/:id
+// @desc    Get a single idea
+// @access  Public
+router.get("/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400);
+      throw new Error("Invalid ID");
+    }
+
+    const idea = await Idea.findById(id);
+    if (!idea) {
+      res.status(404);
+      throw new Error("Idea not found");
+    }
+
+    res.status(200).json(idea);
+  } catch (err) {
+    console.log(err.message);
+    next(err);
+  }
 });
 
 // @route   POST /api/ideas
 // @desc    Create a new idea
 // @access  Private
-router.post("/", (req, res) => {
-  const data = req.body;
-  res.send(data);
+router.post("/", protect, async (req, res, next) => {
+  try {
+    const { title, summary, description, tags } = req.body || {};
+    if (!title?.trim() || !summary?.trim() || !description?.trim()) {
+      res.status(400);
+      throw new Error("Missing required fields");
+    }
+    const newIdea = new Idea({
+      title,
+      summary,
+      description,
+      tags:
+        typeof tags === "string"
+          ? tags
+              .split(",")
+              .map((tag) => tag.trim())
+              .filter((tag) => tag !== "")
+          : Array.isArray(tags)
+          ? tags
+          : [],
+      user: req.user.id,
+    });
+
+    const savedIdea = await newIdea.save();
+    res.status(201).json(savedIdea);
+  } catch (err) {
+    console.log(err.message);
+    next(err);
+  }
+});
+
+// @route   DELETE /api/ideas/:id
+// @desc    delete a single idea
+// @access  Private
+router.delete("/:id", protect, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400);
+      throw new Error("Invalid ID");
+    }
+
+    const idea = await Idea.findById(id);
+    if (!idea) {
+      res.status(404);
+      throw new Error("Idea not found");
+    }
+
+    // Check if user is the owner of the idea
+    if (idea.user.toString() !== req.user._id.toString()) {
+      res.status(403);
+      throw new Error("Not authorized to delete this idea");
+    }
+
+    await idea.deleteOne();
+
+    res.status(200).json({ message: "Idea deleted successfully" });
+  } catch (err) {
+    console.log(err.message);
+    next(err);
+  }
+});
+
+// @route   PUT /api/ideas/:id
+// @desc    Update a single idea
+// @access  Private
+router.put("/:id", protect, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400);
+      throw new Error("Invalid ID");
+    }
+
+    const idea = await Idea.findById(id);
+    if (!idea) {
+      res.status(404);
+      throw new Error("Idea not found");
+    }
+
+    // Check if user is the owner of the idea
+    if (idea.user.toString() !== req.user._id.toString()) {
+      res.status(403);
+      throw new Error("Not authorized to update this idea");
+    }
+
+    const { title, summary, description, tags } = req.body || {};
+    if (!title?.trim() || !summary?.trim() || !description?.trim()) {
+      res.status(400);
+      throw new Error("Missing required fields");
+    }
+
+    idea.title = title;
+    idea.summary = summary;
+    idea.description = description;
+    idea.tags = Array.isArray(tags)
+      ? tags
+      : typeof tags === "string"
+      ? tags
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter((tag) => tag !== "")
+      : [];
+
+    const updatedIdea = await idea.save();
+    res.status(200).json(updatedIdea);
+  } catch (err) {
+    console.log(err.message);
+    next(err);
+  }
 });
 
 export default router;
