@@ -15,7 +15,10 @@ const PORT = process.env.PORT || 8000;
 // Connect to MongoDB
 connectDB();
 
-const allowedOrigins = ["http://localhost:3000"];
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://idea-drop-frontend-o82n.vercel.app/",
+];
 
 app.use(
   cors({
