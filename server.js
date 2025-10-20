@@ -17,12 +17,20 @@ connectDB();
 
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://idea-drop-frontend-o82n.vercel.app/",
+  "https://idea-drop-frontend-o82n.vercel.app",
 ];
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS not allowed from this origin"));
+      }
+    },
     credentials: true,
   })
 );
