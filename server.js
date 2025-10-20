@@ -17,23 +17,23 @@ connectDB();
 
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://idea-drop-frontend-o82n-9sdsoitfx-mohit-kucheriyas-projects.vercel.app",
+  "https://idea-drop-frontend-o82n-p4161oepn-mohit-kucheriyas-projects.vercel.app",
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-
+      if (!origin) return callback(null, true); // allow non-browser requests
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error("CORS not allowed from this origin"));
       }
     },
-    credentials: true,
+    credentials: true, // needed for cookies
   })
 );
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
